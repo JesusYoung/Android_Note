@@ -129,6 +129,34 @@ public void handleMessage(@NonNull Message msg) {
 
 ## 子线程中使用Handler
 
+在主线程中直接new Handler可以正常运行，但是在子线程中直接new Handler时，如果不提前调用Looper.prepare()方法，则会造成崩溃；
+
+```java
+new Thread(new Runnable() {
+  @Override
+  public void run() {
+    Handler handler = new Handler();
+  }
+}).start();
+
+java.lang.RuntimeException: Can't create handler inside thread Thread[Thread-3,5,main] that has not called Looper.prepare()
+```
+
+因为在Handler的构造函数中，会通过Looper.myLooper()方法去获取当前线程的Looper对象，如果为空则会抛出异常；
+
+```java
+public Handler(@Nullable Callback callback, boolean async) {
+  ...
+  mLooper = Looper.myLooper();
+  if (mLooper == null) {
+    throw new RuntimeException(
+      "Can't create handler inside thread " + Thread.currentThread()
+      	+ " that has not called Looper.prepare()");
+  }
+  ...
+}
+```
+
 通常在主线程中使用Handler时，可以直接创建Handler，但是在子线程中使用Handler时，需要手动去创建Looper对象，并且调用Looper对象的loop()方法去轮询消息，因为子线程中默认没有创建Looper，在主线程即UI线程中不需要手动创建Looper对象是因为在App启动的时候，在ActivityThread的main()方法中就已经创建出了主线程的Looper对象，并调用了Looper的loop()方法；
 
 ```java
